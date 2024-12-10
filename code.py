@@ -1,52 +1,46 @@
 from google.cloud import aiplatform
+import os
 
 # Initialize the API client
 def initialize_ai_client(api_key):
     """
     Initialize the Google AI client using the provided API key.
     """
+    os.environ["GOOGLE_API_KEY"] = api_key
     aiplatform.init(
         project="your-gcp-project-id",  # Replace with your Google Cloud project ID
         location="us-central1"          # Replace with your region if needed
     )
-    # Set the API key as an environment variable
-    import os
-    os.environ["GOOGLE_API_KEY"] = AIzaSyBjG0fvTKF-_urlOO9Llv59Qlm2U1hn0kA
 
 # Generate a response using Gemini II
-def generate_response(user_input, api_key):
+def generate_response(user_input):
     """
     Sends a user query to the Gemini II model via the PaLM API and returns the response.
     """
     try:
-        # Set the Gemini endpoint and initialize the client
-        endpoint = "text-bison@001"  # Replace with the Gemini II model endpoint if different
-        client = aiplatform.gapic.PredictionServiceClient()
-        
-        # Define model path
-        project_id = "glass-arcade-444305-u5"  # Replace with your Google Cloud Project ID
+        # Define the model path
+        project_id = "your-gcp-project-id"  # Replace with your Google Cloud Project ID
         location = "us-central1"           # Replace with your region
-        model_path = f"projects/{project_id}/locations/{location}/publishers/google/models/{endpoint}"
+        model_name = "text-bison@001"      # Replace with the Gemini II model endpoint if different
+        model_path = f"projects/{project_id}/locations/{location}/publishers/google/models/{model_name}"
         
-        # Send the user input to the model
-        response = client.predict(
-            endpoint=model_path,
+        # Make the prediction
+        prediction = aiplatform.Model(model_path).predict(
             instances=[{"content": user_input}],
             parameters={
                 "temperature": 0.7,       # Adjust creativity
                 "maxOutputTokens": 200   # Adjust length of response
-            },
-            api_key=api_key  # Pass the API key directly
+            }
         )
         
         # Extract and return the response
-        prediction = response.predictions[0]["content"]
-        return prediction.strip()
+        response_content = prediction.predictions[0]["content"]
+        return response_content.strip()
     except Exception as e:
         return f"An error occurred: {e}"
 
 # Main chatbot loop
-def chatbot(api_key):
+def chatbot():
     """
     Main function to interact with the chatbot.
     """
@@ -60,12 +54,11 @@ def chatbot(api_key):
             break
         
         # Get the chatbot's response
-        response = generate_response(user_input, api_key)
+        response = generate_response(user_input)
         print(f"Chatbot: {response}")
 
 # Run the chatbot
 if __name__ == "__main__":
     API_KEY = "your_gemini_api_key"  # Replace with your Gemini API key
     initialize_ai_client(API_KEY)
-    chatbot(API_KEY)
-
+    chatbot()
