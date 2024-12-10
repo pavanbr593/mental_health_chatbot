@@ -1,15 +1,5 @@
 import openai
-import streamlit as st
-# Debugging step: Print out available secrets
-st.write("Available secrets:", list(st.secrets.keys()))
-
-# Try setting the API key
-openai.api_key = st.secrets["OPENAI_API_KEY"]
-
-
-# API Key Configuration
-openai.api_key = st.secrets["OPENAI_API_KEY"]
-
+import streamlit as st 
 
 # Define a function to interact with GPT
 def generate_response(user_input):
