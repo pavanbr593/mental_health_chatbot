@@ -1,45 +1,71 @@
-import openai
-import streamlit as st 
+from google.cloud import aiplatform
 
-# Define a function to interact with GPT
-def generate_response(user_input):
+# Initialize the API client
+def initialize_ai_client(api_key):
+    """
+    Initialize the Google AI client using the provided API key.
+    """
+    aiplatform.init(
+        project="your-gcp-project-id",  # Replace with your Google Cloud project ID
+        location="us-central1"          # Replace with your region if needed
+    )
+    # Set the API key as an environment variable
+    import os
+    os.environ["GOOGLE_API_KEY"] = AIzaSyBjG0fvTKF-_urlOO9Llv59Qlm2U1hn0kA
+
+# Generate a response using Gemini II
+def generate_response(user_input, api_key):
+    """
+    Sends a user query to the Gemini II model via the PaLM API and returns the response.
+    """
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a compassionate and supportive mental health assistant. Provide helpful advice, mindfulness techniques, and resources for professional help."},
-                {"role": "user", "content": user_input},
-            ],
-            max_tokens=150,
-            temperature=0.7
+        # Set the Gemini endpoint and initialize the client
+        endpoint = "text-bison@001"  # Replace with the Gemini II model endpoint if different
+        client = aiplatform.gapic.PredictionServiceClient()
+        
+        # Define model path
+        project_id = "glass-arcade-444305-u5"  # Replace with your Google Cloud Project ID
+        location = "us-central1"           # Replace with your region
+        model_path = f"projects/{project_id}/locations/{location}/publishers/google/models/{endpoint}"
+        
+        # Send the user input to the model
+        response = client.predict(
+            endpoint=model_path,
+            instances=[{"content": user_input}],
+            parameters={
+                "temperature": 0.7,       # Adjust creativity
+                "maxOutputTokens": 200   # Adjust length of response
+            },
+            api_key=api_key  # Pass the API key directly
         )
-        return response['choices'][0]['message']['content'].strip()
+        
+        # Extract and return the response
+        prediction = response.predictions[0]["content"]
+        return prediction.strip()
     except Exception as e:
         return f"An error occurred: {e}"
 
-# Streamlit App
-st.title("AI-Powered Mental Health Chatbot")
-st.markdown("""
-This chatbot provides basic mental health support. It can suggest mindfulness activities, calming techniques, and point you towards professional resources if needed.  
-**Disclaimer**: This is not a replacement for professional mental health care.
-""")
+# Main chatbot loop
+def chatbot(api_key):
+    """
+    Main function to interact with the chatbot.
+    """
+    print("Welcome to the Gemini II-powered Chatbot!")
+    print("Ask me anything. Type 'exit' to quit.")
 
-# Input from User
-user_input = st.text_area("How can I help you today?", height=150)
+    while True:
+        user_input = input("You: ")
+        if user_input.lower() == "exit":
+            print("Goodbye! Take care.")
+            break
+        
+        # Get the chatbot's response
+        response = generate_response(user_input, api_key)
+        print(f"Chatbot: {response}")
 
-if st.button("Submit"):
-    if user_input:
-        with st.spinner("Thinking..."):
-            response = generate_response(user_input)
-        st.markdown("### Response:")
-        st.write(response)
-    else:
-        st.warning("Please enter your message.")
+# Run the chatbot
+if __name__ == "__main__":
+    API_KEY = "your_gemini_api_key"  # Replace with your Gemini API key
+    initialize_ai_client(API_KEY)
+    chatbot(API_KEY)
 
-# Optional: Provide emergency resources
-st.markdown("""
----
-If you are in crisis, please reach out to a professional:  
-- [National Suicide Prevention Lifeline (US)](https://suicidepreventionlifeline.org)  
-- Call 911 (US) or your country's emergency services.  
-""")
