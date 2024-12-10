@@ -1,2 +1,5 @@
-google-cloud-aiplatform==1.34.0  
-google-auth==2.23.0             
+google-cloud-aiplatform==1.34.0
+google-auth==2.23.0
+streamlit==1.17.0
+setuptools>=65.0
+wheel>=0.38.4
