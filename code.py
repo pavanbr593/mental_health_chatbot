@@ -4,10 +4,10 @@ import streamlit as st
 st.write("Available secrets:", list(st.secrets.keys()))
 
 # Try setting the API key
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+openai.api_key = st.secrets["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"]
 
 # API Key Configuration
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+openai.api_key = st.secrets["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"]
 
 # Define a function to interact with GPT
 def generate_response(user_input):
