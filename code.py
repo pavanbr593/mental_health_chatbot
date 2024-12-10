@@ -59,6 +59,6 @@ def chatbot():
 
 # Run the chatbot
 if __name__ == "__main__":
-    API_KEY = "your_gemini_api_key"  # Replace with your Gemini API key
+    API_KEY = "AIzaSyBjG0fvTKF-_urlOO9Llv59Qlm2U1hn0kA"  # Replace with your Gemini API key
     initialize_ai_client(API_KEY)
     chatbot()
