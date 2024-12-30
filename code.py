@@ -59,3 +59,8 @@ def chatbot():
         response = generate_response(user_input)
         print(f"Chatbot: {response}")
 
+# Run the chatbot
+if __name__ == "__main__":
+    initialize_ai_client()
+    chatbot()
+
