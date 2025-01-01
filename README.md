@@ -1,4 +1,4 @@
-#Mental Health Support Agent#
+Mental Health Support Agent
 
 This project is a mental health support agent built using Streamlit and the Ollama language model. 
 It aims to provide a user-friendly interface to help users by generating responses related to mental health, offering positive affirmations, and guiding users through meditation exercises.
