@@ -1,9 +1,7 @@
-# AI-Powered Mental Health Chatbot
+Mental Health Support Agent
+This project is a mental health support agent built using Streamlit and the Ollama language model. It aims to provide a user-friendly interface to help users by generating responses related to mental health, offering positive affirmations, and guiding users through meditation exercises.
 
-It provides basic mental health support, including mindfulness tips and suggestions for calming techniques.  
-
-## Features
-- Natural language understanding for conversational input.
-- Offers calming techniques and suggests mindfulness activities.
-- Directs users to professional mental health resources in emergencies.
-
+Features
+Chat Interface: Interact with the AI chatbot to get helpful responses related to mental health.
+Positive Affirmations: Get positive affirmations to encourage and motivate you.
+Meditation Guide: Receive a short meditation guide to help reduce stress and relax.
