@@ -8,6 +8,8 @@ def get_base64(background):
     """
     Converts an image file to a Base64 encoded string.
 
+    
+
     Args:
         background (str): Path to the image file.
 
