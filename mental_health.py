@@ -1,119 +1,127 @@
-# Import necessary libraries
-import streamlit as st  # For creating a web-based application
-import ollama  # For interacting with the AI language model
-import base64  # For encoding images to Base64 for embedding
+import os
+from typing import List, TypedDict, Annotated
+from langgraph.graph import StateGraph
+from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables.graph import MermaidDrawMethod
+from langchain_groq import ChatGroq
+from IPython.display import display
+import gradio as gr
 
-# Function to encode an image as a Base64 string
-def get_base64(background):
-    """
-    Converts an image file to a Base64 encoded string.
-    Args:
-        background (str): Path to the image file.
+# Define the state of the mental health chatbot
+class MentalHealthState(TypedDict):
+    messages: Annotated[List[HumanMessage | AIMessage], "Messages in the conversation"]
+    current_feelings: str
+    struggles: List[str]
+    support_suggestions: str
 
-    Returns:
-        str: Base64 encoded string representation of the image.
-    """
-    with open(background, "rb") as image_file:
-        data = image_file.read()
-        return base64.b64encode(data).decode()
-
-# Encode the background image
-bin_str = get_base64("background.jpg")
-
-# Apply custom background styling to the Streamlit app
-st.markdown(
-    f"""
-    <style>
-    .main{{
-        background-image: url('data:image/jpg;base64,{bin_str}');
-        background-style: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-    }}
-    </style>
-    """,
-    unsafe_allow_html=True,
+# Initialize Groq model for generating responses
+llm = ChatGroq(
+    temperature=0,
+    groq_api_key="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",
+    model_name="llama-3.3-70b-versatile"
 )
 
-# Initialize session state for conversation history
-st.session_state.setdefault('conversation_history', [])
+# Chat prompt template to enhance empathy and understanding in responses
+mental_health_prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a caring and empathetic mental health assistant. When a user shares their feelings, always respond with understanding and compassion. Offer emotional support and helpful, practical coping strategies. Show the user they are not alone, and provide reassurance that it is okay to have difficult feelings. Avoid being overly clinical—create a warm and safe environment for them."),
+    ("human", "I am feeling {current_feelings} and I am struggling with {struggles}. Can you help me?"),
+])
 
-# Function to generate a response from the AI model
-def generate_response(user_input):
+# Functions for updating user state based on feelings and struggles
+
+def input_feelings(feelings: str, state: MentalHealthState) -> MentalHealthState:
     """
-    Sends the user's message to the AI model and returns a response.
+    Updates the state with the user's feelings.
 
     Args:
-        user_input (str): The user's input text.
+    feelings (str): The current feelings of the user.
+    state (MentalHealthState): The current state of the chatbot.
 
     Returns:
-        str: The AI-generated response.
+    MentalHealthState: The updated state with the user's feelings.
     """
-    st.session_state['conversation_history'].append({"role": "user", "content": user_input})  # Record user input
+    return {
+        **state,
+        "current_feelings": feelings,
+        "messages": state['messages'] + [HumanMessage(content=f"I am feeling {feelings}.")],
+    }
 
-    try:
-        # Send conversation history to the AI model for a response
-        response = ollama.chat(model="llama3.1:8b", messages=st.session_state['conversation_history'])
-        ai_response = response['message']['content']  # Extract AI response
-    except Exception as e:
-        # Handle API errors gracefully
-        ai_response = f"Oops! An error occurred while connecting to the chat service. Please try again later. (Error: {str(e)})"
-
-    st.session_state['conversation_history'].append({"role": "assistant", "content": ai_response})  # Record AI response
-    return ai_response
-
-# Function to generate a positive affirmation
-def generate_affirmation():
+def input_struggles(struggles: str, state: MentalHealthState) -> MentalHealthState:
     """
-    Generates a positive affirmation to encourage users.
+    Updates the state with the user's struggles.
+
+    Args:
+    struggles (str): The struggles of the user (comma-separated).
+    state (MentalHealthState): The current state of the chatbot.
 
     Returns:
-        str: A positive affirmation.
+    MentalHealthState: The updated state with the user's struggles.
     """
-    prompt = "Provide a positive affirmation to encourage someone who is feeling stressed or overwhelmed."
-    response = ollama.chat(model="llama3.1:8b", messages=[{"role": "user", "content": prompt}])
-    return response['message']['content']
+    return {
+        **state,
+        "struggles": struggles.split(", "),
+        "messages": state['messages'] + [HumanMessage(content=f"I am struggling with: {struggles}.")],
+    }
 
-# Function to generate a short meditation guide
-def generate_meditation_guide():
+# Function to generate a supportive response and suggest coping mechanisms
+def provide_support(state: MentalHealthState) -> str:
     """
-    Generates a brief meditation guide to help users relax.
+    Generates a response to provide emotional support and coping strategies.
+
+    Args:
+    state (MentalHealthState): The current state of the chatbot, including feelings and struggles.
 
     Returns:
-        str: A meditation guide.
+    str: The generated response containing suggestions and emotional support.
     """
-    prompt = "Provide a short meditation guide to help someone relax and reduce stress."
-    response = ollama.chat(model="llama3.1:8b", messages=[{"role": "user", "content": prompt}])
-    return response['message']['content']
+    # Get the assistant's response from the Groq model
+    response = llm.invoke(mental_health_prompt.format_messages(
+        current_feelings=state['current_feelings'],
+        struggles=", ".join(state['struggles'])
+    ))
 
-# Display the app title
-st.title("Mental Health Support Agent")
+    # Personalizing the response with more encouragement
+    suggestions = response.content
+    return f"{suggestions}\n\nRemember, it's completely okay to feel this way. You're doing the best you can, and that matters. You're not alone in this, and I believe in you!"
 
-# Display the chat history
-for msg in st.session_state['conversation_history']:
-    role = "You" if msg['role'] == "user" else "AI"  # Identify message sender
-    st.markdown(f"**{role}:** {msg['content']}")  # Display message
+# Main function to handle the mental health chatbot conversation
+def mental_health_chat(feelings: str, struggles: str) -> str:
+    """
+    Main function that handles the conversation and updates the state.
 
-# Input field for user messages
-user_message = st.text_input("How can I help you today?")
+    Args:
+    feelings (str): The user's feelings.
+    struggles (str): The user's struggles (comma-separated).
 
-if user_message:
-    # Generate and display the AI's response
-    with st.spinner("Generating response..."):
-        ai_response = generate_response(user_message)
-        st.markdown(f"**AI:** {ai_response}")
+    Returns:
+    str: The final response with emotional support and coping strategies.
+    """
+    state: MentalHealthState = {
+        "messages": [],
+        "current_feelings": "",
+        "struggles": [],
+        "support_suggestions": "",
+    }
 
-# Layout for the additional functionalities: Affirmations and Meditation Guide
-col1, col2 = st.columns(2)  # Create two columns
+    state = input_feelings(feelings, state)
+    state = input_struggles(struggles, state)
 
-with col1:
-    if st.button("Give me a positive affirmation"):
-        # Generate and display a positive affirmation
-        affirmation = generate_affirmation()
-        st.markdown(f"**Affirmation:** {affirmation}")
+    support_response = provide_support(state)
 
-with col2:
-    if st.button("Give me a meditation guide"):
-        # Generate and display a meditation guide
-        meditation_guide = generate_meditation_guide()
-        st.markdown(f"**Meditation Guide:** {meditation_guide}")
+    return support_response
+
+# Gradio Interface for interacting with the chatbot
+interface = gr.Interface(
+    fn=mental_health_chat,
+    inputs=[
+        gr.Textbox(label="How are you feeling?"),
+        gr.Textbox(label="What are you struggling with? (comma-separated)"),
+    ],
+    outputs=gr.Textbox(label="Support and Suggestions"),
+    title="Mental Health Support Chatbot",
+    description="Talk to this chatbot about your feelings and struggles. It will provide emotional support and suggest helpful coping strategies. You're not alone."
+)
+
+# Launch the chatbot interface
+interface.launch(share=False)
