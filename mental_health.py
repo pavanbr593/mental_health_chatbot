@@ -3,9 +3,11 @@ from typing import List, TypedDict, Annotated
 from langgraph.graph import StateGraph
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables.graph import MermaidDrawMethod
 from langchain_groq import ChatGroq
+from IPython.display import display
+import gradio as gr
 import random
-import streamlit as st
 
 # Define the state of the mental health chatbot
 class MentalHealthState(TypedDict):
@@ -16,29 +18,32 @@ class MentalHealthState(TypedDict):
 
 # Initialize Groq model for generating responses
 llm = ChatGroq(
-    temperature=0.7,  # Adjusted for diverse outputs
+    temperature=0.7,  # Increase randomness for varied outputs
     groq_api_key="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",
     model_name="llama-3.3-70b-versatile"
 )
 
-# Randomized supportive closing messages
-closing_messages = [
-    "Remember, you're stronger than you think, and it's okay to take things one step at a time.",
-    "You're not alone in this journey—small steps lead to big changes.",
-    "It's perfectly okay to feel this way; tomorrow is a fresh start.",
-    "You are valued and capable, even on the toughest days. Keep going!",
-    "Every challenge you face is a step toward growth. You’ve got this!"
+# Therapist-style prompt variations to ensure diverse and supportive responses
+PROMPT_VARIATIONS = [
+    "You are a compassionate therapist helping someone through a tough time. Listen closely to their feelings, validate their emotions, and provide thoughtful advice. Be caring and warm.",
+    "You are a licensed therapist offering empathetic and personalized support to a user sharing their struggles. Offer practical steps and ensure they feel heard.",
+    "You are an experienced counselor specializing in mental health. Always focus on reassurance, empathy, and actionable strategies to help the user navigate their challenges."
 ]
 
-# Chat prompt template for empathy and understanding
-mental_health_prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are a caring and empathetic mental health assistant. When a user shares their feelings, always respond with understanding and compassion. Offer emotional support and helpful, practical coping strategies. Show the user they are not alone, and provide reassurance that it is okay to have difficult feelings. Avoid being overly clinical—create a warm and safe environment for them."),
-    ("human", "I am feeling {current_feelings} and I am struggling with {struggles}. Can you help me?"),
-])
+# Generate a dynamic prompt template
+def generate_prompt_template():
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", random.choice(PROMPT_VARIATIONS)),
+        ("human", "I am feeling {current_feelings} and I am struggling with {struggles}. Can you help me?")
+    ])
+    return prompt_template
 
 # Functions for updating user state based on feelings and struggles
 
 def input_feelings(feelings: str, state: MentalHealthState) -> MentalHealthState:
+    """
+    Updates the state with the user's feelings.
+    """
     return {
         **state,
         "current_feelings": feelings,
@@ -46,6 +51,9 @@ def input_feelings(feelings: str, state: MentalHealthState) -> MentalHealthState
     }
 
 def input_struggles(struggles: str, state: MentalHealthState) -> MentalHealthState:
+    """
+    Updates the state with the user's struggles.
+    """
     return {
         **state,
         "struggles": struggles.split(", "),
@@ -54,44 +62,60 @@ def input_struggles(struggles: str, state: MentalHealthState) -> MentalHealthSta
 
 # Function to generate a supportive response and suggest coping mechanisms
 def provide_support(state: MentalHealthState) -> str:
+    """
+    Generates a response to provide emotional support and coping strategies.
+    """
+    # Get a dynamically generated prompt template
+    mental_health_prompt = generate_prompt_template()
+
+    # Get the assistant's response from the Groq model
     response = llm.invoke(mental_health_prompt.format_messages(
         current_feelings=state['current_feelings'],
         struggles=", ".join(state['struggles'])
     ))
 
-    closing_message = random.choice(closing_messages)
+    # Add varied encouraging phrases
+    encouragement_phrases = [
+        "You're not alone, and this is a safe space for you to share.",
+        "It's okay to feel this way—you're taking an important step by reaching out.",
+        "Every small step forward counts, and I'm here to support you.",
+        "You have the strength to overcome this, even if it doesn't feel that way now.",
+    ]
+
+    # Personalizing the response with more encouragement
     suggestions = response.content
+    return f"{suggestions}\n\n{random.choice(encouragement_phrases)}"
 
-    return f"{suggestions}\n\n{closing_message}"
+# Main function to handle the mental health chatbot conversation
+def mental_health_chat(feelings: str, struggles: str) -> str:
+    """
+    Main function that handles the conversation and updates the state.
+    """
+    state: MentalHealthState = {
+        "messages": [],
+        "current_feelings": "",
+        "struggles": [],
+        "support_suggestions": "",
+    }
 
-# Streamlit App
-def main():
-    st.title("Mental Health Support Chatbot")
-    st.write("Talk to this chatbot about your feelings and struggles. It will provide emotional support and suggest helpful coping strategies. You're not alone.")
+    state = input_feelings(feelings, state)
+    state = input_struggles(struggles, state)
 
-    # User inputs
-    feelings = st.text_input("How are you feeling?", placeholder="e.g., anxious, stressed")
-    struggles = st.text_area("What are you struggling with? (comma-separated)", placeholder="e.g., work pressure, relationships")
+    support_response = provide_support(state)
 
-    if st.button("Get Support"):
-        if feelings and struggles:
-            state: MentalHealthState = {
-                "messages": [],
-                "current_feelings": "",
-                "struggles": [],
-                "support_suggestions": "",
-            }
+    return support_response
 
-            state = input_feelings(feelings, state)
-            state = input_struggles(struggles, state)
+# Gradio Interface for interacting with the chatbot
+interface = gr.Interface(
+    fn=mental_health_chat,
+    inputs=[
+        gr.Textbox(label="How are you feeling?"),
+        gr.Textbox(label="What are you struggling with? (comma-separated)"),
+    ],
+    outputs=gr.Textbox(label="Support and Suggestions"),
+    title="Therapist-Style Mental Health Chatbot",
+    description="Talk to this chatbot about your feelings and struggles. It will provide emotional support and suggest helpful coping strategies tailored to you."
+)
 
-            # Generate support response
-            support_response = provide_support(state)
-
-            # Display the response
-            st.markdown(f"### Support and Suggestions\n{support_response}")
-        else:
-            st.warning("Please fill in both fields to receive support.")
-
-if __name__ == "__main__":
-    main()
+# Launch the chatbot interface
+interface.launch(share=False)
